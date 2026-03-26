@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+
+models/*.pth
+models/*.pt
+images/**/*.jpg
+images/**/*.png
+images/**/*.jpeg
