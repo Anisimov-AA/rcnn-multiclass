@@ -212,37 +212,12 @@ for cls_name in ["tv", "remote", "wine_bottle"]:
     print(f"  {cls_name}: {cls_correct}/{len(cls_preds)}")
 
 
-# show some test predictions
-fig, axes = plt.subplots(2, 3, figsize=(12, 8))
-mean = np.array([0.485, 0.456, 0.406])
-std = np.array([0.229, 0.224, 0.225])
-
-samples = np.random.choice(len(test_data), min(6, len(test_data)), replace=False)
-
-for i, idx in enumerate(samples):
-    ax = axes[i // 3][i % 3]
-    img_tensor, target = test_data[idx]
-
-    with torch.no_grad():
-        cls_pred, _ = model(img_tensor.unsqueeze(0).to(device))
-        pred_label = idx_to_class[cls_pred.argmax(1).item()]
-        true_label = idx_to_class[target["labels"][0].item()]
-
-    # undo normalization for display
-    img = img_tensor.numpy().transpose(1, 2, 0)
-    img = std * img + mean
-    img = np.clip(img, 0, 1)
-
-    ax.imshow(img)
-    color = "green" if pred_label == true_label else "red"
-    ax.set_title(f"pred: {pred_label} / actual: {true_label}", color=color)
-    ax.axis("off")
-
-plt.tight_layout()
-plt.savefig("test_predictions.png")
-plt.show()
-print("Saved test_predictions.png")
+# show ALL test predictions (24 images: 4 rows x 6 cols)
+cols = 6
+rows = 4
+fig, axes = plt.subplots(rows, cols, fig
 
 # save trained model
-torch.save(model.state_dict(), "rcnn_model.pth")
-print("Model saved to rcnn_model.pth")
+os.makedirs("models", exist_ok=True)
+torch.save(model.state_dict(), "models/rcnn_model.pth")
+print("Model saved to models/rcnn_model.pth")
