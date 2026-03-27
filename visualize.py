@@ -2,10 +2,11 @@ import os
 import torch
 import torch.nn as nn
 from torchvision import transforms, models
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from PIL import Image
 
 # paths
@@ -19,6 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class_to_idx = {"tv": 1, "remote": 2, "wine_bottle": 3}
 idx_to_class = {0: "background", 1: "tv", 2: "remote", 3: "wine_bottle"}
+class_colors = {"tv": "lime", "remote": "cyan", "wine_bottle": "magenta"}
 
 
 class ObjectDataset(Dataset):
@@ -34,6 +36,7 @@ class ObjectDataset(Dataset):
     def __getitem__(self, idx):
         fname = self.images[idx]
         img = Image.open(os.path.join(self.img_dir, fname)).convert("RGB")
+        orig_w, orig_h = img.size
 
         rows = self.df[self.df["filename"] == fname]
         boxes = []
@@ -48,7 +51,7 @@ class ObjectDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
-        return img, {"boxes": boxes, "labels": labels}
+        return img, {"boxes": boxes, "labels": labels, "orig_size": (orig_w, orig_h), "filename": fname}
 
 
 class SimpleRCNN(nn.Module):
@@ -86,9 +89,8 @@ class SimpleRCNN(nn.Module):
 model = SimpleRCNN(num_classes).to(device)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.eval()
-print("Model loaded from", MODEL_PATH)
+print("Model loaded")
 
-# load test data
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -96,34 +98,46 @@ transform = transforms.Compose([
 ])
 
 test_data = ObjectDataset(TEST_CSV, TEST_IMG_DIR, transform)
-print(f"Loaded {len(test_data)} test images")
+print(f"{len(test_data)} test images")
 
-# show all 24 test predictions
-mean = np.array([0.485, 0.456, 0.406])
-std = np.array([0.229, 0.224, 0.225])
-
-fig, axes = plt.subplots(4, 6, figsize=(18, 12))
+# show all test images with bounding boxes
+fig, axes = plt.subplots(4, 6, figsize=(20, 14))
 
 for i in range(len(test_data)):
     ax = axes[i // 6][i % 6]
     img_tensor, target = test_data[i]
+    orig_w, orig_h = target["orig_size"]
 
     with torch.no_grad():
         cls_pred, _ = model(img_tensor.unsqueeze(0).to(device))
         pred_label = idx_to_class[cls_pred.argmax(1).item()]
         true_label = idx_to_class[target["labels"][0].item()]
 
-    img = img_tensor.numpy().transpose(1, 2, 0)
-    img = std * img + mean
-    img = np.clip(img, 0, 1)
+    # load original image for display (not the normalized one)
+    fname = target["filename"]
+    orig_img = Image.open(os.path.join(TEST_IMG_DIR, fname)).convert("RGB")
+    ax.imshow(orig_img)
 
-    ax.imshow(img)
-    color = "green" if pred_label == true_label else "red"
-    ax.set_title(f"{pred_label} / {true_label}", color=color, fontsize=9)
+    # draw ground truth bounding box
+    box = target["boxes"][0]
+    xmin, ymin, xmax, ymax = box[0], box[1], box[2], box[3]
+    color = class_colors.get(true_label, "white")
+    rect = patches.Rectangle(
+        (xmin, ymin), xmax - xmin, ymax - ymin,
+        linewidth=2, edgecolor=color, facecolor="none"
+    )
+    ax.add_patch(rect)
+
+    # label with prediction
+    title_color = "green" if pred_label == true_label else "red"
+    ax.set_title(f"pred: {pred_label}", color=title_color, fontsize=8)
+    ax.text(xmin, ymin - 5, true_label, color=color, fontsize=7,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="black", alpha=0.7))
     ax.axis("off")
 
-plt.suptitle("All Test Predictions (green=correct, red=wrong)", fontsize=14)
+plt.suptitle("Test Results - Bounding Boxes + Predictions (green=correct, red=wrong)", fontsize=13)
 plt.tight_layout()
-plt.savefig("screenshots/all_predictions.png")
+os.makedirs("screenshots", exist_ok=True)
+plt.savefig("screenshots/all_predictions.png", dpi=150)
 plt.show()
 print("Saved screenshots/all_predictions.png")
