@@ -20,7 +20,7 @@ TEST_IMG_DIR = os.path.join(DATA_DIR, "dataset", "test")
 num_classes = 4  # tv, remote, wine_bottle + background
 batch_size = 2
 epochs = 10
-lr = 0.005
+lr = 0.001
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Running on: {device}")
@@ -147,9 +147,15 @@ for epoch in range(epochs):
         # grab first annotation per image (we have 1 object per image anyway)
         cls_targets = torch.tensor([t["labels"][0] for t in targets]).to(device)
         box_targets = torch.stack([t["boxes"][0] for t in targets]).to(device)
-        box_targets = box_targets / 1000.0  # normalize coords
+        # normalize bbox coords to 0-1 range based on max value in batch
+        box_max = box_targets.max()
+        if box_max > 0:
+            box_targets = box_targets / box_max
 
         cls_pred, box_pred = model(imgs)
+
+        # clamp predictions to avoid nan
+        box_pred = torch.clamp(box_pred, -10, 10)
 
         loss = cls_loss_fn(cls_pred, cls_targets) + box_loss_fn(box_pred, box_targets)
 
