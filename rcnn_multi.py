@@ -178,9 +178,10 @@ plt.title("Training Loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.grid(True)
-plt.savefig("training_loss.png")
+os.makedirs("screenshots", exist_ok=True)
+plt.savefig("screenshots/training_loss.png")
 plt.show()
-print("Saved training_loss.png")
+print("Saved screenshots/training_loss.png")
 
 
 # test the model
@@ -211,11 +212,6 @@ for cls_name in ["tv", "remote", "wine_bottle"]:
     cls_correct = sum(1 for p in cls_preds if p["actual"] == p["predicted"])
     print(f"  {cls_name}: {cls_correct}/{len(cls_preds)}")
 
-
-# show ALL test predictions (24 images: 4 rows x 6 cols)
-cols = 6
-rows = 4
-fig, axes = plt.subplots(rows, cols, fig
 
 # save trained model
 os.makedirs("models", exist_ok=True)
