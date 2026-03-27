@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # paths - change these if running locally
-DATA_DIR = "/kaggle/input/rcnn-multiclass-dataset"
+DATA_DIR = "/kaggle/input/datasets/tylerde/rcnn-multiclass-dataset"
 TRAIN_CSV = os.path.join(DATA_DIR, "train.csv")
 TEST_CSV = os.path.join(DATA_DIR, "test.csv")
 TRAIN_IMG_DIR = os.path.join(DATA_DIR, "dataset", "train")
